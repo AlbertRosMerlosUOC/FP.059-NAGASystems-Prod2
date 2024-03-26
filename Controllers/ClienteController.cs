@@ -5,8 +5,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Xml.Serialization;
 using CapaModelo;
 using FP._059_NAGASystems_Prod2.Data;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace FP._059_NAGASystems_Prod2.Controllers
 {
@@ -56,14 +58,24 @@ namespace FP._059_NAGASystems_Prod2.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("DNI,Nombre,Apellido1,Apellido2,Telefono,Direccion,Email,VIP,Estado")] Cliente cliente)
         {
+            // Verificar si ya existe un cliente con el mismo DNI
+            bool dniExists = _context.Cliente.Any(c => c.DNI == cliente.DNI);
+            if (dniExists)
+            {
+                // Añadir un mensaje de error al ModelState para mostrar en la vista
+                ModelState.AddModelError("DNI", "El DNI introducido ya está en uso.");
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(cliente);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+            // Si el ModelState no es válido o el DNI ya existe, se devuelve a la vista de creación con los datos introducidos
             return View(cliente);
         }
+
 
         // GET: Cliente/Edit/5
         public async Task<IActionResult> Edit(string id)
@@ -153,5 +165,59 @@ namespace FP._059_NAGASystems_Prod2.Controllers
         {
             return _context.Cliente.Any(e => e.DNI == id);
         }
+
+
+        public IActionResult ImportarXml()
+        {
+            // Este es para la solicitud GET para mostrar el formulario
+            return View();
+        }
+
+
+
+        // Método POST para procesar la carga de XML
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ImportarXml(IFormFile archivoXml)
+        {
+            if (archivoXml != null && archivoXml.Length > 0)
+            {
+                XmlSerializer serializer = new XmlSerializer(typeof(List<Cliente>), new XmlRootAttribute("Clientes"));
+                List<Cliente> clientesImportados;
+                List<string> dnisActualizados = new List<string>();
+
+                using (var stream = archivoXml.OpenReadStream())
+                {
+                    clientesImportados = (List<Cliente>)serializer.Deserialize(stream);
+                }
+
+                foreach (var cliente in clientesImportados)
+                {
+                    var clienteExistente = await _context.Cliente.FindAsync(cliente.DNI);
+                    if (clienteExistente != null)
+                    {
+                        _context.Entry(clienteExistente).CurrentValues.SetValues(cliente);
+                        dnisActualizados.Add(cliente.DNI); // Guardar DNI del cliente actualizado
+                    }
+                    else
+                    {
+                        _context.Add(cliente);
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                // Guardar los DNIs actualizados en TempData para mostrar en la vista
+                if (dnisActualizados.Any())
+                {
+                    TempData["DnisActualizados"] = string.Join(", ", dnisActualizados) + " ya estaban incluidos en la base de datos y se han actualizado los datos con los proporcionados por el XML.";
+                }
+
+                return RedirectToAction(nameof(Index));
+            }
+
+            return View();
+        }
     }
+
 }

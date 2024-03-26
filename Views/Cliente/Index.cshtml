@@ -6,8 +6,17 @@
 
 <h1>Index</h1>
 
+@if (TempData["DnisActualizados"] != null)
+{
+    <div class="alert alert-success" role="alert">
+        @Html.Raw(TempData["DnisActualizados"].ToString())
+    </div>
+}
 <p>
     <a asp-action="Create">Create New</a>
+</p>
+<p>
+    <a asp-action="ImportarXml">Importar XML</a>
 </p>
 <table class="table">
     <thead>
