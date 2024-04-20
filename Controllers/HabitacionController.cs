@@ -13,12 +13,48 @@ namespace FP._059_NAGASystems_Prod2.Controllers
     public class HabitacionController : Controller
     {
         private readonly FP_059_NAGASystems_Prod2Context _context;
+        private readonly HabitacionServicio _habitacionServicio;
 
         public HabitacionController(FP_059_NAGASystems_Prod2Context context)
         {
             _context = context;
+            _habitacionServicio = new HabitacionServicio(context); 
         }
 
+        // Método para mostrar habitaciones disponibles
+        [HttpPost]
+        public async Task<IActionResult> VerHabitacionesDisponibles(string fechaInicioStr, string fechaFinStr)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(fechaInicioStr) || string.IsNullOrEmpty(fechaFinStr))
+                {
+                    ModelState.AddModelError("", "Ambas fechas son requeridas.");
+                    return View();
+                }
+
+                var fechaInicio = DateTime.Parse(fechaInicioStr);
+                var fechaFin = DateTime.Parse(fechaFinStr);
+
+                if (fechaInicio >= fechaFin)
+                {
+                    ModelState.AddModelError("", "La fecha de inicio debe ser anterior a la fecha de fin.");
+                    return View();
+                }
+
+                var habitaciones = await _habitacionServicio.ObtenerHabitacionesDisponibles(fechaInicio, fechaFin);
+                return View("HabitacionesDisponibles", habitaciones);
+            }
+            catch (FormatException)
+            {
+                ModelState.AddModelError("", "Formato de fecha inválido.");
+                return View();
+            }
+        }
+        public IActionResult VerHabitacionesDisponibles()
+        {
+            return View("VerHabitacionesDisponibles");
+        }
         // GET: Habitacion
         public async Task<IActionResult> Index()
         {

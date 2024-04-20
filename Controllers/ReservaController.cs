@@ -153,5 +153,69 @@ namespace FP._059_NAGASystems_Prod2
         {
             return _context.Reserva.Any(e => e.Id == id);
         }
+        // POST: Reserva/CheckIn/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CheckIn(int id)
+        {
+            var reserva = await _context.Reserva.FindAsync(id);
+            if (reserva == null)
+            {
+                return NotFound();
+            }
+
+            if (reserva.CheckIn == 0)
+            {
+                reserva.CheckIn = 1;
+                _context.Update(reserva);
+                await _context.SaveChangesAsync();
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+        public async Task<IActionResult> ListaPendientesCheckIns()
+        {
+            var currentDate = DateTime.Now;
+            var reservasPendientes = await _context.Reserva
+                .Where(r => r.FechaInicio < currentDate && r.CheckIn == 0 && r.Cancelado != 1)
+                .ToListAsync();
+
+            return View(reservasPendientes);
+        }
+
+        // POST: Reserva/Cancel/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Cancel(int id)
+        {
+            var reserva = await _context.Reserva.FindAsync(id);
+            if (reserva == null)
+            {
+                return NotFound();
+            }
+
+            reserva.Cancelado = 1;  // Anula la reserva
+            _context.Update(reserva);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(ListaPendientesCheckIns));
+        }
+        // POST: Reserva/CancelReservation/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CancelReservation(int id)
+        {
+            var reserva = await _context.Reserva.FindAsync(id);
+            if (reserva == null)
+            {
+                return NotFound();
+            }
+
+            reserva.Cancelado = 1;  // Marca la reserva como cancelada
+            _context.Update(reserva);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Index));
+        }
     }
 }
